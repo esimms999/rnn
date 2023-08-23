@@ -68,5 +68,54 @@ y_test <- y[-training_index]
 # initialize our model
 model <- keras_model_sequential()
 
+# dimensions of our input data
+dim(X_train)
 
+# our input layer
+model %>%
+  layer_dense(input_shape = dim(X_train)[2:3], units = max_len)
 
+model %>% 
+  layer_simple_rnn(units = 6)
+
+model %>%
+  layer_dense(units = 1, activation = 'sigmoid') # output
+
+# look at our model architecture
+summary(model)
+
+model %>% compile(loss = 'binary_crossentropy', 
+                  optimizer = 'RMSprop', 
+                  metrics = c('accuracy'))
+
+# Actually train our model! This step will take a while
+trained_model <- model %>% fit(
+  x = X_train, # sequence we're using for prediction 
+  y = y_train, # sequence we're predicting
+  batch_size = batch_size, # how many samples to pass to our model at a time
+  epochs = total_epochs, # how many times we'll look @ the whole dataset
+  validation_split = 0.1) # how much data to hold out for testing as we go along
+
+# how well did our trained model do?
+trained_model
+
+# plot how our model preformance changed during training 
+plot(trained_model)
+
+# Predict the classes for the test data
+# deprecated: classes <- model %>% predict_classes(X_test, batch_size = batch_size)
+classes <- model %>% predict(X_test, batch_size = batch_size) %>% k_argmax()
+
+# Confusion matrix
+table(y_test, classes)
+
+model %>% evaluate(X_test, y_test, batch_size = batch_size)
+
+# baseline: just guess the weather will be the same as yesterday
+day_before <- X_test[,max_len - 1,1]
+
+# Confusion matrix
+table(y_test, day_before)
+
+# accuracy
+sum(day_before == classes)/length(classes)
